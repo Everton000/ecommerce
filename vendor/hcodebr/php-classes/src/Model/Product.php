@@ -135,4 +135,28 @@ class Product extends Model
 
         $this->checkPhoto();
     }
+
+    //Método que busca um produto pela sua URL (parte de detalhes)
+    public function getFromURL($desurl)
+    {
+        $sql = new Sql();
+
+        $results = $sql->select("SELECT * FROM tb_products WHERE desurl = :desurl LIMIT 1", array(
+            ":desurl" => $desurl
+        ));
+
+        $this->setData($results[0]);
+    }
+
+    //Método que busca a categoria de um produto (parte de detalhes)
+    public function getCategories()
+    {
+        $sql = new Sql();
+
+        return $sql->select("SELECT * FROM tb_categories 
+                            INNER JOIN tb_productscategories ON (tb_productscategories.idcategory = tb_categories.idcategory)
+                            WHERE tb_productscategories.idproduct = :idproduct", array(
+            ":idproduct" => $this->getidproduct()
+        ));
+    }
 }

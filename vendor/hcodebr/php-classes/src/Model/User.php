@@ -12,6 +12,46 @@ class User Extends Model
     const SESSION = "User";
     const SECRET = "HcodePhp7_Secret";
 
+    public static function getFromSession()
+    {
+        $user = new User();
+
+        if(isset($_SESSION[User::SESSION]) && (int)$_SESSION[User::SESSION]['iduser'] > 0)
+            $user->setData($_SESSION[User::SESSION]);
+
+        return $user;
+    }
+
+    //Verifica o status do login
+    public static function checkLogin($inadmin = true)
+    {
+
+        if (!isset($_SESSION[User::SESSION])
+        ||
+        !$_SESSION[User::SESSION]
+        ||
+        !(int)$_SESSION[User::SESSION]["iduser"] > 0 )
+        {
+            //Não está logado
+            return false;
+        } else {
+
+            if($inadmin === true && (bool)$_SESSION[User::SESSION]["inadmin"] === true)
+            {
+                //Está logado e é um admin
+                return true;
+
+            } else if ($inadmin === false)
+            {
+                //Está logado mas não é um admin
+                return true;
+            } else {
+                //Não está logado
+                return false;
+            }
+        }
+    }
+
     public static function Login($login, $password)
     {
         $sql = new Sql();
@@ -19,6 +59,7 @@ class User Extends Model
         $results = $sql->select("SELECT * FROM tb_users WHERE deslogin = :LOGIN", array(
             ":LOGIN" => $login
         ));
+
 
         if (count($results) === 0)
         {
@@ -41,6 +82,7 @@ class User Extends Model
         //Verificaçao de senha Encriptada
         if (password_verify($password, $data["despassword"]) === true)
         {
+
             $user = new User();
 
             $user->setData($data);
@@ -57,15 +99,8 @@ class User Extends Model
 
     public static function verifyLogin($inadmin = true)
     {
-        if (
-            !isset($_SESSION[User::SESSION])
-            ||
-            !$_SESSION[User::SESSION]
-            ||
-            !(int)$_SESSION[User::SESSION]["iduser"] > 0
-            ||
-            (bool)$_SESSION[User::SESSION]["inadmin"] !== $inadmin
-        ) {
+        if (User::checkLogin($inadmin) === false)
+        {
             header("Location: /admin/login");
             exit;
         }
