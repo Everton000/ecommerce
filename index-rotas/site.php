@@ -4,6 +4,8 @@ use \Hcode\Page;
 use \Hcode\Model\Category;
 use \Hcode\Model\Product;
 use \Hcode\Model\Cart;
+use \Hcode\Model\Address;
+use \Hcode\Model\User;
 
 $app->get('/', function()
 {
@@ -67,7 +69,8 @@ $app->get("/cart", function ()
 
     $page->setTpl("cart", array(
         "cart" => $cart->getValues(),
-        "products" => $cart->getProducts()
+        "products" => $cart->getProducts(),
+        "error" => Cart::getMsgError()
     ));
 });
 
@@ -116,4 +119,168 @@ $app->get("/cart/:idproduct/remove", function($idproduct)
 
     header("Location: /cart");
     exit;
+});
+
+$app->post("/cart/freight", function ()
+{
+    $cart = Cart::getFromSession();
+
+    $cart->setFreight($_POST['zipcode']);
+
+    header("Location: /cart");
+
+    exit;
+});
+
+$app->get("/checkout", function()
+{
+    User::verifyLogin(false);
+
+    $cart =  Cart::getFromSession();
+
+    $address = new Address();
+
+    $page = new Page;
+
+    $page->setTpl("checkout", array(
+        "cart" => $cart->getValues(),
+        "address" => $address->getValues()
+    ));
+});
+
+$app->get("/login", function()
+{
+    $page = new Page;
+
+    $page->setTpl("login", array(
+        "error" => User::getMsgError(),
+        "errorRegister" => User::getMsgErrorRegister(),
+        "registerValues" => (isset($_SESSION['registerValues'])) ? $_SESSION['registerValues'] : ['name' => '', 'email' => '', 'phone' => '']
+    ));
+});
+
+$app->post("/login", function()
+{
+    try {
+        User::login($_POST['login'], $_POST['password']);
+
+    } catch(Exception $e) {
+
+        User::setMsgError($e->getMessage());
+    }
+
+    header("Location: /checkout");
+    exit;
+});
+
+$app->get("/logout", function ()
+{
+    User::logout();
+
+    header("Location: /login");
+    exit;
+});
+
+$app->post("/register", function ()
+{
+    $_SESSION['registerValues'] = $_POST;
+
+    if(!isset($_POST['name']) || $_POST['name'] == '')
+    {
+        User::setMsgErrorRegister("Preencha o seu nome.");
+        header("Location: /login");
+        exit;
+    }
+    if(!isset($_POST['email']) || $_POST['email'] == '')
+    {
+        User::setMsgErrorRegister("Preencha o seu e-mail.");
+        header("Location: /login");
+        exit;
+    }
+    if(!isset($_POST['password']) || $_POST['password'] == '')
+    {
+        User::setMsgErrorRegister("Preencha a senha.");
+        header("Location: /login");
+        exit;
+    }
+
+    if(User::checkLoginExist($_POST['email']) === true)
+    {
+        User::setMsgErrorRegister("Este endereço de e-mail já está cadastrado.");
+        header("Location: /login");
+        exit;
+    }
+    $user = new User();
+
+    $user->checkLoginExist($_POST['email']);
+
+    $user->setData(array(
+        "inadmin" => 0,
+        "deslogin" => $_POST['email'],
+        "desperson" => $_POST['name'],
+        "desemail" => $_POST['email'],
+        "despassword" => $_POST['password'],
+        "nrphone" => $_POST['phone']
+    ));
+
+    $user->save();
+
+    User::login($_POST['email'], $_POST['password']);
+
+    header("Location: /checkout");
+    exit;
+});
+
+$app->get("/forgot", function ()
+{
+    $page = new Page();
+
+    $page->setTpl("forgot");
+});
+
+$app->post("/forgot", function ()
+{
+    $user = User::getForgot($_POST["email"], false);
+    header("Location: /forgot/sent");
+    exit;
+});
+
+$app->get("/forgot/sent", function ()
+{
+    $page = new Page();
+
+    $page->setTpl("forgot-sent");
+});
+
+$app->get("/forgot/reset", function ()
+{
+    $user = User::validForgotDecrypt($_GET['code']);
+
+    $page = new Page();
+
+    $page->setTpl("forgot-reset", array(
+        "name" => $user["desperson"],
+        "code" => $_GET["code"]
+    ));
+});
+
+$app->post("/forgot/reset", function ()
+{
+    $forgot = User::validForgotDecrypt($_POST['code']);
+
+    User::setFogotUsed($forgot["idrecovery"]);
+
+    $user = new User();
+
+    $user->get((int)$forgot["iduser"]);
+
+    $password = password_hash($_POST["password"], PASSWORD_DEFAULT, [
+        "cost" => 12
+    ]);
+
+    $user->setPassword($password);
+
+    $page = new Page();
+
+    $page->setTpl("forgot-reset-success");
 });
