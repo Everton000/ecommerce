@@ -132,5 +132,36 @@ class Category extends Model
             ":idproduct" => $product->getidproduct()
         ));
     }
+
+    public static function getPage($page = 1, $search = '', $itensPerPage = 10)
+    {
+        $start = ($page - 1) * $itensPerPage;
+
+        $sql = new Sql();
+
+        if ($search == '')
+        {
+            $results = $sql->select("SELECT SQL_CALC_FOUND_ROWS *
+                                FROM tb_categories ORDER BY descategory
+                                LIMIT $start, $itensPerPage
+                                ");
+        } else {
+
+            $results = $sql->select("SELECT SQL_CALC_FOUND_ROWS *
+                                FROM tb_categories 
+                                WHERE descategory LIKE :search
+                                ORDER BY descategory
+                                LIMIT $start, $itensPerPage
+                                ", array(
+                ":search" => '%'. $search .'%'
+            ));
+        }
+
+        $total = $sql->select("SELECT FOUND_ROWS() AS nrtotal");
+
+        $pages = ceil($total[0]["nrtotal"] / $itensPerPage);
+
+        return array ($results, (int)$total, $pages);
+    }
 }
 ?>

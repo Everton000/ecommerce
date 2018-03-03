@@ -8,6 +8,7 @@
  */
 
 use \Hcode\Model\User;
+use \Hcode\Model\Cart;
 
 class Utils
 {
@@ -27,6 +28,11 @@ class Utils
         return str_replace(",", ".", $value);
     }
 
+    public static function formatDate($date)
+    {
+        return date('d/m/Y', strtotime($date));
+    }
+
     public static function checkLogin($inadmin = true)
     {
         return User::checkLogin($inadmin);
@@ -38,4 +44,29 @@ class Utils
 
         return $user->getdesperson();
     }
+
+    public static function format($string)
+    {
+        return utf8_encode($string);
+    }
+
+    public static function getCartNrQtd()
+    {
+        $cart = Cart::getFromSession();
+
+        $totals = $cart->getProductsTotals();
+
+        return $totals['nrqtd'];
+    }
+
+    public static function getCartVlSubTotal()
+    {
+        $cart = Cart::getFromSession();
+
+        $totals = $cart->getProductsTotals();
+
+        return self::formatPrice($totals['vlprice']);
+    }
+
+
 }

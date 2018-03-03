@@ -10,12 +10,31 @@ $app->get("/admin/categories", function()
 {
     User::verifyLogin();
 
-    $categories = Category::listAll();
+    $search = (isset($_GET['search'])) ? $_GET['search'] : '';
+
+    $pages = (isset($_GET['page'])) ? (int)$_GET['page'] : 1;
+
+    $pagination = Category::getPage($pages, $search);
+
+    $orderPages = [];
+
+    for ($x = 1; $x < $pagination[2]; $x++)
+    {
+        array_push($orderPages, array(
+            'href' => '/admin/categories?' . http_build_query(array(
+                    'page' => $x,
+                    'search' => $search
+                )),
+            'text' => $x
+        ));
+    }
 
     $page = new PageAdmin();
 
     $page->setTpl("categories", [
-        'categories' => $categories
+        "categories" => $pagination[0],
+        "search" => $search,
+        "pages" => $orderPages
     ]);
 });
 

@@ -13,6 +13,7 @@ class User Extends Model
     const SECRET = "HcodePhp7_Secret";
     const ERROR = "UserError";
     const ERROR_REGISTER = "UserErrorRegister";
+    const SUCCESS = "UserSuccess";
 
     public static function getFromSession()
     {
@@ -71,17 +72,17 @@ class User Extends Model
         }
         $data = $results[0];
 
-        /*//Verificaçao de senha nao Encriptada
-        if ($password == $data["despassword"])
-        {
-            $user = new User();
-
-            $user->setData($data);
-
-            $_SESSION[User::SESSION] = $user->getValues();
-
-            return $user;
-        }*/
+        //Verificaçao de senha nao Encriptada
+//        if ($password == $data["despassword"])
+//        {
+//            $user = new User();
+//
+//            $user->setData($data);
+//
+//            $_SESSION[User::SESSION] = $user->getValues();
+//
+//            return $user;
+//        }
 
         //Verificaçao de senha Encriptada
         if (password_verify($password, $data["despassword"]) === true)
@@ -340,4 +341,75 @@ class User Extends Model
 
         return (count($results) > 0);
     }
+
+    public static function setSuccess($msg)
+    {
+        $_SESSION[User::SUCCESS] = $msg;
+    }
+
+    public static function getSuccess()
+    {
+        $msg = isset($_SESSION[User::SUCCESS]) ? $_SESSION[User::SUCCESS] : '';
+
+        User::clearSuccess();
+
+        return $msg;
+    }
+
+    public static function clearSuccess()
+    {
+        $_SESSION[User::SUCCESS] = NULL;
+    }
+
+    public function getOrders()
+    {
+        $sql = new Sql();
+
+        $results = $sql->select("SELECT * FROM tb_orders o 
+                                INNER JOIN tb_ordersstatus s USING(idstatus)
+                                INNER JOIN tb_carts c USING (idcart)
+                                INNER JOIN tb_users u ON (u.iduser = o.iduser)
+                                INNER JOIN tb_addresses a USING (idaddress)
+                                INNER JOIN tb_persons p ON (p.idperson = u.idperson)
+                                WHERE u.iduser = :iduser", array(
+            ":iduser" => $this->getiduser()
+        ));
+
+        return $results;
+    }
+
+    public static function getPage($page = 1, $search = '', $itensPerPage = 10)
+    {
+        $start = ($page - 1) * $itensPerPage;
+
+        $sql = new Sql();
+
+        if ($search == '')
+        {
+            $results = $sql->select("SELECT SQL_CALC_FOUND_ROWS *
+                                FROM tb_users a  
+                                INNER JOIN tb_persons b USING(idperson)
+                                ORDER BY b.desperson
+                                LIMIT $start, $itensPerPage
+                                ");
+        } else {
+
+            $results = $sql->select("SELECT SQL_CALC_FOUND_ROWS *
+                                FROM tb_users a  
+                                INNER JOIN tb_persons b USING(idperson)
+                                WHERE b.desperson LIKE :search OR b.desemail = :search OR a.deslogin LIKE :search
+                                ORDER BY b.desperson
+                                LIMIT $start, $itensPerPage
+                                ", array(
+                                    ":search" => '%'. $search .'%'
+            ));
+        }
+
+        $total = $sql->select("SELECT FOUND_ROWS() AS nrtotal");
+
+        $pages = ceil($total[0]["nrtotal"] / $itensPerPage);
+
+        return array ($results, (int)$total, $pages);
+    }
+
 }
